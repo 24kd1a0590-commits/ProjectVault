@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knowledge Vault Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen">
+
+  <div class="flex min-h-screen">
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col">
+      <h1 class="text-2xl font-bold mb-8">Knowledge Vault</h1>
+
+      <nav class="space-y-3">
+        <button onclick="switchTab('notes')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 transition">📘 My Notes</button>
+        <button onclick="switchTab('tags')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 transition">🏷️ Tags</button>
+        <button onclick="switchTab('linked')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 transition">🔗 Linked Notes</button>
+        <button onclick="switchTab('history')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 transition">🕘 History</button>
+        <button onclick="switchTab('reminders')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-800 transition">⏰ Reminders</button>
+      </nav>
+
+      <button onclick="openModal()" class="mt-auto bg-indigo-600 hover:bg-indigo-700 rounded-2xl py-3 text-lg font-semibold">
+  + New Note
+</button>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-8">
+
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <h2 class="text-3xl font-bold">Smart Personal Knowledge Vault</h2>
+          <p class="text-slate-400 mt-2">Organize, connect, and manage your ideas seamlessly.</p>
+        </div>
+
+        <input 
+          type="text" 
+          id="searchBox"
+          placeholder="Search notes..."
+          class="bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3 w-80"
+          onkeyup="filterNotes()"
+        />
+      </div>
+
+      <!-- Stats -->
+      <div class="grid md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-slate-900 rounded-2xl p-6 shadow-lg">
+          <p class="text-slate-400">Total Notes</p>
+          <h3 class="text-3xl font-bold" id="totalNotes">3</h3>
+        </div>
+        <div class="bg-slate-900 rounded-2xl p-6 shadow-lg">
+          <p class="text-slate-400">Linked Notes</p>
+          <h3 class="text-3xl font-bold" id="linkedCount">12</h3>
+        </div>
+        <div class="bg-slate-900 rounded-2xl p-6 shadow-lg">
+          <p class="text-slate-400">Reminders</p>
+          <h3 class="text-3xl font-bold" id="reminderCount">4</h3>
+        </div>
+      </div>
+
+      <!-- Dynamic Content -->
+      <div id="mainContent"></div>
+
+    </main>
+  </div>
+
+  <script>
+    const notes = [
+      {
+        title: "MongoDB Project Idea",
+        type: "Idea",
+        updated: "2 hrs ago",
+        content: "Build a flexible notes app with schema-less storage.",
+        tags: ["database", "project"]
+      },
+      {
+        title: "Daily Tasks",
+        type: "Checklist",
+        updated: "Today",
+        content: "Finish UI, test backend, submit project report.",
+        tags: ["productivity"]
+      },
+      {
+        title: "Research Notes",
+        type: "Text",
+        updated: "Yesterday",
+        content: "MongoDB supports flexible JSON-like documents.",
+        tags: ["study", "notes"]
+      }
+    ];
+    function openModal() {
+  document.getElementById("noteModal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("noteModal").classList.add("hidden");
+}
+
+async function saveNote() {
+
+  const title = document.getElementById("noteTitle").value;
+
+  const content = document.getElementById("noteContent").value;
+
+  const tags = document.getElementById("noteTags").value
+    .split(",");
+
+  const note = {
+    title,
+    content,
+    tags,
+    type: "Text"
+  };
+
+  await fetch("http://localhost:5000/notes", {
+
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json"
+    },
+
+    body: JSON.stringify(note)
+  });
+
+  fetchNotes();
+
+  closeModal();
+}
+
+    function displayNotes(filtered = notes) {
+      const container = document.getElementById("mainContent");
+
+      container.innerHTML = `
+        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+          ${filtered.map(note => `
+            <div class="bg-slate-900 rounded-2xl p-6 shadow-lg">
+              <div class="flex justify-between items-center mb-3">
+                <span class="text-xs bg-indigo-600 px-3 py-1 rounded-full">${note.type}</span>
+                <span class="text-sm text-slate-400">${note.updated}</span>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">${note.title}</h3>
+              <p class="text-slate-400 text-sm mb-4">${note.content}</p>
+              <div class="flex flex-wrap gap-2">
+                ${note.tags.map(tag => `
+                  <span class="text-xs bg-slate-800 px-2 py-1 rounded-lg">#${tag}</span>
+                `).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+async function fetchNotes() {
+
+  const res = await fetch("http://localhost:5000/notes");
+
+  notes = await res.json();
+
+  displayNotes();
+}
+
+fetchNotes();
+    function switchTab(tab) {
+      const container = document.getElementById("mainContent");
+
+      if (tab === "notes") displayNotes();
+
+      if (tab === "tags") {
+        container.innerHTML = `
+          <h2 class="text-2xl font-bold mb-4">Tags</h2>
+          <div class="flex gap-3 flex-wrap">
+            <span class="bg-slate-800 px-4 py-2 rounded-xl">#database</span>
+            <span class="bg-slate-800 px-4 py-2 rounded-xl">#project</span>
+            <span class="bg-slate-800 px-4 py-2 rounded-xl">#study</span>
+          </div>
+        `;
+      }
+
+      if (tab === "linked") {
+        container.innerHTML = `
+          <h2 class="text-2xl font-bold mb-4">Linked Notes</h2>
+          <div class="bg-slate-900 p-6 rounded-2xl">
+            <p>🔗 Research Notes → MongoDB Project Idea</p>
+            <p class="mt-2">🔗 Daily Tasks → Project Submission</p>
+          </div>
+        `;
+      }
+
+      if (tab === "history") {
+        container.innerHTML = `
+          <h2 class="text-2xl font-bold mb-4">Version History</h2>
+          <div class="bg-slate-900 p-6 rounded-2xl">
+            <p>🕘 Edited Research Notes - Yesterday</p>
+            <p class="mt-2">🕘 Created Daily Tasks - Today</p>
+          </div>
+        `;
+      }
+
+      if (tab === "reminders") {
+        container.innerHTML = `
+          <h2 class="text-2xl font-bold mb-4">Reminders</h2>
+          <div class="bg-slate-900 p-6 rounded-2xl">
+            <p>⏰ Submit project tomorrow</p>
+            <p class="mt-2">⏰ Review backend code at 6 PM</p>
+          </div>
+        `;
+      }
+    }
+
+    function filterNotes() {
+      const search = document.getElementById("searchBox").value.toLowerCase();
+      const filtered = notes.filter(note =>
+        note.title.toLowerCase().includes(search)
+      );
+      displayNotes(filtered);
+    }
+
+    displayNotes();
+  </script>
+<!-- Modal -->
+<div id="noteModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center">
+  <div class="bg-slate-900 p-8 rounded-2xl w-[400px]">
+    <h2 class="text-2xl font-bold mb-4">Create New Note</h2>
+
+    <input id="noteTitle" type="text" placeholder="Title"
+      class="w-full mb-3 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700">
+
+    <textarea id="noteContent" placeholder="Content"
+      class="w-full mb-3 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700"></textarea>
+
+    <input id="noteTags" type="text" placeholder="Tags (comma separated)"
+      class="w-full mb-4 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700">
+
+    <div class="flex justify-end gap-3">
+      <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-700">Cancel</button>
+      <button onclick="saveNote()" class="px-4 py-2 rounded-xl bg-indigo-600">Save</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

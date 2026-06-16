@@ -67,31 +67,9 @@
 
     </main>
   </div>
-
   <script>
-    let notes = [
-      {
-        title: "MongoDB Project Idea",
-        type: "Idea",
-        updated: "2 hrs ago",
-        content: "Build a flexible notes app with schema-less storage.",
-        tags: ["database", "project"]
-      },
-      {
-        title: "Daily Tasks",
-        type: "Checklist",
-        updated: "Today",
-        content: "Finish UI, test backend, submit project report.",
-        tags: ["productivity"]
-      },
-      {
-        title: "Research Notes",
-        type: "Text",
-        updated: "Yesterday",
-        content: "MongoDB supports flexible JSON-like documents.",
-        tags: ["study", "notes"]
-      }
-    ];
+    let currentTab = "notes";
+    let notes = [];
     function openModal() {
   document.getElementById("noteModal").classList.remove("hidden");
 }
@@ -103,20 +81,28 @@ function closeModal() {
 async function saveNote() {
 
   const title = document.getElementById("noteTitle").value;
-
+  const duration = document.getElementById("noteDuration").value;
   const content = document.getElementById("noteContent").value;
 
-  const tags = document.getElementById("noteTags").value
-    .split(",");
+  const tags =
+document.getElementById("noteTags")
+.value
+.split(",")
+.map(tag => tag.trim());
 
-  const note = {
-    title,
-    content,
-    tags,
-    type: "Text",
-    updated: new Date()
-  };
+  const reminderDate = new Date();
 
+reminderDate.setDate(reminderDate.getDate() + Number(duration));
+
+const note = {
+  title,
+  content,
+  tags,
+  duration,
+  reminder: reminderDate,
+  type: "Text",
+  updated: new Date()
+};
   await fetch("http://localhost:5000/notes", {
     method: "POST",
 
@@ -127,7 +113,11 @@ async function saveNote() {
     body: JSON.stringify(note)
   });
 
-  fetchNotes();
+  await fetchNotes();
+  document.getElementById("noteTitle").value = "";
+document.getElementById("noteContent").value = "";
+document.getElementById("noteTags").value = "";
+document.getElementById("noteDuration").value = "";
 
   closeModal();
 }
@@ -145,7 +135,20 @@ async function saveNote() {
                 <span class="text-sm text-slate-400">${new Date(note.updated).toLocaleDateString()}</span>
               </div>
               <h3 class="text-xl font-semibold mb-2">${note.title}</h3>
-              <p class="text-slate-400 text-sm mb-4">${note.content}</p>
+              <p class="text-slate-400 text-sm mb-4">
+  ${note.content}
+</p>
+
+<p class="text-indigo-400 text-sm mb-2">
+  ⏰ Reminder:
+  ${note.reminder
+    ? new Date(note.reminder).toLocaleDateString()
+    : "No Reminder"}
+</p>
+
+<p class="text-slate-500 text-sm mb-3">
+  Duration: ${note.duration || 0} days
+</p>
               <div class="flex flex-wrap gap-2">
                 ${note.tags.map(tag => `
                   <span class="text-xs bg-slate-800 px-2 py-1 rounded-lg">#${tag}</span>
@@ -158,14 +161,31 @@ async function saveNote() {
     }
 async function fetchNotes() {
 
-  const res = await fetch("http://localhost:5000/notes");
-  notes = await res.json();
+  try {
 
-  displayNotes();
+    const res = await fetch("http://localhost:5000/notes");
+
+    notes = await res.json();
+
+    document.getElementById("totalNotes").innerText = notes.length;
+
+    switchTab(currentTab);
+
+  }
+
+  catch(error) {
+
+    console.log(error);
+
+  }
+
 }
 
 fetchNotes();
+
+setInterval(fetchNotes,3000);
     function switchTab(tab) {
+      currentTab = tab;
       const container = document.getElementById("mainContent");
 
       if (tab === "notes") displayNotes();
@@ -201,15 +221,53 @@ fetchNotes();
         `;
       }
 
-      if (tab === "reminders") {
-        container.innerHTML = `
-          <h2 class="text-2xl font-bold mb-4">Reminders</h2>
-          <div class="bg-slate-900 p-6 rounded-2xl">
-            <p>⏰ Submit project tomorrow</p>
-            <p class="mt-2">⏰ Review backend code at 6 PM</p>
+if (tab === "reminders") {
+
+  const reminders = notes.filter(note => note.reminder);
+
+  container.innerHTML = `
+
+    <h2 class="text-2xl font-bold mb-4">
+      Upcoming Reminders
+    </h2>
+
+    <div class="space-y-4">
+
+      ${reminders.map(note => {
+
+        const remainingDays = Math.ceil(
+          (new Date(note.reminder) - new Date()) /
+          (1000 * 60 * 60 * 24)
+        );
+
+        return `
+
+          <div class="bg-slate-900 p-5 rounded-2xl">
+
+            <h3 class="text-lg font-semibold">
+              ${note.title}
+            </h3>
+
+            <p class="text-slate-400 mt-2">
+              ⏰ Reminder Date:
+              ${new Date(note.reminder).toLocaleDateString()}
+            </p>
+
+            <p class="text-indigo-400 mt-2">
+              ${remainingDays > 0
+                ? remainingDays + " days remaining"
+                : "Reminder Expired"}
+            </p>
+
           </div>
+
         `;
-      }
+      }).join("")}
+
+    </div>
+
+  `;
+}
     }
 
     function filterNotes() {
@@ -220,7 +278,6 @@ fetchNotes();
       displayNotes(filtered);
     }
 
-    displayNotes();
   </script>
 <!-- Modal -->
 <div id="noteModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center">
@@ -235,6 +292,12 @@ fetchNotes();
 
     <input id="noteTags" type="text" placeholder="Tags (comma separated)"
       class="w-full mb-4 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700">
+      <input 
+  id="noteDuration"
+  type="number"
+  placeholder="Reminder after how many days?"
+  class="w-full mb-4 px-4 py-3 rounded-xl bg-slate-800 border border-slate-700"
+/>
 
     <div class="flex justify-end gap-3">
       <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-700">Cancel</button>

@@ -24,7 +24,8 @@ const noteSchema = new mongoose.Schema({
     title: String,
 
     content: String,
-
+    duration: Number,
+    reminder: Date,
     tags: [String],
 
     type: String,
@@ -90,8 +91,18 @@ app.get("/notes", async (req, res) => {
 
 
 // SERVER
-app.listen(5000, () => {
+const http = require("http");
+const { Server } = require("socket.io");
 
-    console.log("Server Running on Port 5000");
+const server = http.createServer(app);
 
+const io = new Server(server,{
+    cors:{
+        origin:"*"
+    }
 });
+
+server.listen(5000,()=>{
+    console.log("Server Running");
+});
+
